@@ -1,0 +1,380 @@
+QUESTION:
+
+Food Delivery Platform – Specification Document
+Problem Statement
+Implement a console app to manage restaurants, menus, customers, carts, orders,
+payments, and delivery tracking.
+Class Requirements
+1. Restaurant
+2. MenuItem
+3. Customer
+4. Cart
+5. CartItem
+6. Order
+7. Delivery
+Business Rules
+1. Only available menu items can be added to cart.
+2. Order total depends on items, fees, and taxes.
+3. Payment status must be successful before dispatch.
+4. Delivery status progresses through defined stages.
+5. Restaurant inventory (optional) updates on order confirmation.
+Console Interface Requirements
+• Add Restaurant / Add Menu Item / Create Cart / Place Order / Update Delivery
+Status / Display Restaurants & Menus / Exit
+Expected Output Behavior
+
+• Order receipt; delivery status timeline; (optional) updated item availability.
+Questions for Students:
+1. Draw the UML Class Diagram for the system.
+2. Implement the classes with the necessary data members and methods for
+system functionality and business rules.
+3. Use encapsulation, inheritance, aggregation, and polymorphism wherever
+required.
+4. Implement the main method for a menu-driven system.
+
+
+SOURCE CODE:
+MenuItem:
+package Javaprojects;
+
+public class MenuItem {
+	
+	    private static int count = 0;
+	    private int id;
+	    private String name;
+	    private double price;
+	    private boolean available;
+	    private int quantity; // For inventory, optional
+
+	    public MenuItem(String name, double price, boolean available, int quantity) {
+	        this.id = ++count;
+	        this.name = name;
+	        this.price = price;
+	        this.available = available;
+	        this.quantity = quantity;
+	    }
+
+	    public boolean isAvailable() {
+	        return available && quantity > 0;
+	    }
+
+	    public void updateQuantity(int change) {
+	        this.quantity += change;
+	        if (this.quantity <= 0) {
+	            this.available = false;
+	            this.quantity = 0;
+	        }
+	    }
+
+	    public int getId() { return id; }
+	    public String getName() { return name; }
+	    public double getPrice() { return price; }
+
+	    @Override
+	    public String toString() {
+	        return id + ". " + name + " - Rs." + price + " [" + (available ? "Available" : "Unavailable") + ", Qty: " + quantity + "]";
+	    }
+}
+
+Customer:
+package Javaprojects;
+import java.util.*;
+public class Customer {
+	
+	    private static int count = 0;
+	    private int id;
+	    private String name;
+	    private Cart cart;
+	    private List<Order> orderHistory;
+
+	    public Customer(String name) {
+	        this.id = ++count;
+	        this.name = name;
+	        this.cart = new Cart(this);
+	        this.orderHistory = new ArrayList<>();
+	    }
+
+	    public Cart getCart() { return cart; }
+	    public int getId() { return id; }
+	    public String getName() { return name; }
+
+	    public void addOrder(Order order) {
+	        orderHistory.add(order);
+	    }
+
+	    public void showOrderHistory() {
+	        for (Order order : orderHistory) {
+	            System.out.println(order);
+	        }
+	    }
+
+public List<Order> getOrderHistory() {
+    return orderHistory;
+}
+
+}
+
+Cart:
+package Javaprojects;
+import java.util.*;
+public class Cart {
+	
+	    private Customer customer;
+	    private List<CartItem> items;
+
+	    public Cart(Customer customer) {
+	        this.customer = customer;
+	        this.items = new ArrayList<>();
+	    }
+
+	    public void addItem(MenuItem item, int quantity) {
+	        if (!item.isAvailable()) {
+	            System.out.println(item.getName() + " is not available.");
+	            return;
+	        }
+	        items.add(new CartItem(item, quantity));
+	    }
+
+	    public void removeItem(int itemId) {
+	        items.removeIf(ci -> ci.getMenuItem().getId() == itemId);
+	    }
+
+	    public double getTotal() {
+	        double total = 0;
+	        for (CartItem ci : items) {
+	            total += ci.getMenuItem().getPrice() * ci.getQuantity();
+	        }
+	        return total;
+	    }
+
+	    public List<CartItem> getItems() { return items; }
+	    public void clearCart() { items.clear(); }
+	}
+
+CartItem:
+package Javaprojects;
+
+public class CartItem {
+    private MenuItem menuItem;
+    private int quantity;
+
+    public CartItem(MenuItem item, int quantity) {
+        this.menuItem = item;
+        this.quantity = quantity;
+    }
+
+    public MenuItem getMenuItem() { return menuItem; }
+    public int getQuantity() { return quantity; }
+}
+
+Order:
+package Javaprojects;
+
+public class Order {
+    private static int count = 0;
+    private int id;
+    private Cart cart;
+    private double total;
+    private PaymentStatus paymentStatus;
+    private Delivery delivery;
+
+    public enum PaymentStatus { PENDING, SUCCESS, FAILED }
+
+    public Order(Cart cart) {
+        this.id = ++count;
+        this.cart = cart;
+        this.total = cart.getTotal() * 1.05; // 5% fee/tax
+        this.paymentStatus = PaymentStatus.PENDING;
+        this.delivery = new Delivery(this);
+    }
+
+    public boolean processPayment() {
+        // Simulating payment success
+        paymentStatus = PaymentStatus.SUCCESS;
+        return true;
+    }
+
+    public void confirmOrder() {
+        // Update menu items (inventory)
+        for (CartItem item : cart.getItems()) {
+            item.getMenuItem().updateQuantity(-item.getQuantity());
+        }
+    }
+
+    public void generateReceipt() {
+        System.out.println("Order ID: " + id + ", Total: Rs." + total + ", Payment: " + paymentStatus);
+    }
+
+    public Delivery getDelivery() { return delivery; }
+    public PaymentStatus getPaymentStatus() { return paymentStatus; }
+    public int getId() { return id; }
+
+    @Override
+    public String toString() {
+        return "Order #" + id + " | Total: Rs." + total + " | Payment: " + paymentStatus;
+    }
+}
+
+ Delivery:
+package Javaprojects;
+
+public class Delivery {
+    public enum Status { PREPARING, OUT_FOR_DELIVERY, DELIVERED }
+
+    private static int count = 0;
+    private int id;
+    private Order order;
+    private Status status;
+
+    public Delivery(Order order) {
+        this.id = ++count;
+        this.order = order;
+        this.status = Status.PREPARING;
+    }
+
+    public void updateStatus() {
+        switch (status) {
+            case PREPARING:
+                status = Status.OUT_FOR_DELIVERY;
+                break;
+            case OUT_FOR_DELIVERY:
+                status = Status.DELIVERED;
+                break;
+            default:
+                break;
+        }
+        System.out.println("Delivery status: " + status);
+    }
+
+    public Status getStatus() { return status; }
+    public int getId() { return id; }
+}
+
+ Main :
+package Javaprojects;
+
+import java.util.*;
+
+public class Main {
+    private static List<Restaurant> restaurants = new ArrayList<>();
+    private static List<Customer> customers = new ArrayList<>();
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        while (true) {
+            System.out.println("\n1.Add Restaurant\n2.Add Menu Item\n3.Create Customer\n4.Create Cart (add items)\n5.Place Order\n6.Update Delivery Status\n7.Display Restaurants & Menus\n8.Exit");
+            int choice = sc.nextInt();
+            switch(choice) {
+                case 1:
+                    System.out.println("Restaurant Name:");
+                    sc.nextLine();
+                    String rname = sc.nextLine();
+                    restaurants.add(new Restaurant(rname));
+                    break;
+                case 2:
+                    for (int i = 0; i < restaurants.size(); i++)
+                        System.out.println(i+1 + ". " + restaurants.get(i).getName());
+                    System.out.println("Choose Restaurant:");
+                    int rind = sc.nextInt() - 1;
+                    System.out.println("Menu Item Name:");
+                    sc.nextLine();
+                    String mname = sc.nextLine();
+                    System.out.println("Price:");
+                    double price = sc.nextDouble();
+                    System.out.println("Available [true/false]:");
+                    boolean avail = sc.nextBoolean();
+                    System.out.println("Quantity:");
+                    int quant = sc.nextInt();
+                    MenuItem menuItem = new MenuItem(mname, price, avail, quant);
+                    restaurants.get(rind).addMenuItem(menuItem);
+                    break;
+                case 3:
+                    System.out.println("Customer Name:");
+                    sc.nextLine();
+                    String cname = sc.nextLine();
+                    customers.add(new Customer(cname));
+                    break;
+                case 4:
+                    // Assume only 1 customer for simplicity, extend as needed
+                    Customer current = customers.get(0);
+                    System.out.println("Selecting restaurant and showing menu:");
+                    for (int i = 0; i < restaurants.size(); i++)
+                        System.out.println(i+1 + ". " + restaurants.get(i).getName());
+                    System.out.println("Choose Restaurant:");
+                    int resIndex = sc.nextInt() - 1;
+                    Restaurant restaurant = restaurants.get(resIndex);
+                    restaurant.displayMenu();
+                    System.out.println("Add Menu Item by ID:");
+                    int itemId = sc.nextInt();
+                    MenuItem selected = null;
+                    for (MenuItem mi : restaurant.getMenuItems())
+                        if (mi.getId() == itemId) selected = mi;
+                    if (selected != null && selected.isAvailable()) {
+                        System.out.println("Quantity:");
+                        int q = sc.nextInt();
+                        current.getCart().addItem(selected, q);
+                    } else {
+                        System.out.println("Item not available.");
+                    }
+                    break;
+                case 5:
+                    Customer c = customers.get(0);
+                    Order order = new Order(c.getCart());
+                    if (order.processPayment()) {
+                        order.confirmOrder();
+                        System.out.println("Order confirmed and payment successful.");
+                        order.generateReceipt();
+                        c.addOrder(order);
+                        c.getCart().clearCart();
+                    }
+                    break;
+                case 6:
+                    // Only showing last order for demo, extend as needed
+                	Order lastOrder = customers.get(0).getOrderHistory().get(customers.get(0).getOrderHistory().size() - 1);
+                    lastOrder.getDelivery().updateStatus();
+                    break;
+                case 7:
+                    for (Restaurant r : restaurants)
+                        r.displayMenu();
+                    break;
+                case 8:
+                    System.exit(0);
+            }
+        }
+    }
+}
+
+OUTPUT:
+
+1.Add Restaurant
+2.Add Menu Item
+3.Create Customer
+4.Create Cart (add items)
+5.Place Order
+6.Update Delivery Status
+7.Display Restaurants & Menus
+8.Exit
+1
+Restaurant Name:
+Pizza Palace
+
+1.Add Restaurant
+2.Add Menu Item
+3.Create Customer
+4.Create Cart (add items)
+5.Place Order
+6.Update Delivery Status
+7.Display Restaurants & Menus
+8.Exit
+2
+1. Pizza Palace
+Choose Restaurant:
+1
+Menu Item Name:
+DOSA
+Price:
+100
+Available [true/false]:
+TRUE
+Quantity:
+2
